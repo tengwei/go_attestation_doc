@@ -15,15 +15,17 @@ nitro-cli build-enclave --docker-uri aws-enclave-attestation:latest --output-fil
 # 运行 Enclave
 nitro-cli run-enclave --eif-path enclave.eif --enclave-cid 16 --memory 1024 --cpu-count 2 --debug-mode --attach-console
 
+nitro-cli describe-enclaves
+
 nitro-cli console --enclave-id $(nitro-cli describe-enclaves | jq -r '.[0].EnclaveID')
 
-export INSTANCE_ID=i-02f8fc047b1c66083
+export INSTANCE_ID=i-0be3a594f13b79b6b
 
 aws ec2 describe-instances --instance-ids $INSTANCE_ID --region us-west-2 --query "Reservations[0].Instances[0].EnclaveOptions"
 
 
 # 生成私钥
-openssl ecparam -name secp384r1 -genkey -noout -out private.pem
+openssl ecparam -name secp256k1 -genkey -noout -out private.pem
 
 # 从私钥提取公钥
 openssl ec -in private.pem -pubout -out public.pem

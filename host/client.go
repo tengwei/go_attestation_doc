@@ -1,11 +1,14 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/x509"
 	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
 	"io"
 	"log"
 	"os"
@@ -77,7 +80,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("读取公钥文件失败: %v", err)
 		}
-		
+
 		// 处理 PEM 格式的公钥
 		pemContent := string(pkData)
 		if strings.Contains(pemContent, "-----BEGIN PUBLIC KEY-----") {
@@ -86,7 +89,23 @@ func main() {
 			if pemBlock == nil {
 				log.Fatalf("解析 PEM 格式公钥失败")
 			}
-			
+
+			// 解析 DER 编码的公钥
+			pubInterface, err := x509.ParsePKIXPublicKey(pemBlock.Bytes)
+			if err != nil {
+				log.Fatalf("解析 DER 公钥失败: %v", err)
+			}
+
+			// 断言为 *ecdsa.PublicKey 类型
+			pubKey, ok := pubInterface.(*ecdsa.PublicKey)
+			if !ok {
+				log.Fatal("公钥不是 ECDSA 类型")
+			}
+
+			// 使用 go-ethereum 提供的函数将公钥转换为 Ethereum 地址
+			address := crypto.PubkeyToAddress(*pubKey)
+			fmt.Println("Ethereum Address:", address.Hex())
+
 			// 重新编码为 Base64 以便传输
 			publicKeyContent = base64.StdEncoding.EncodeToString(pemBlock.Bytes)
 		} else {
