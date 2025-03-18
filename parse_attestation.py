@@ -187,7 +187,7 @@ def main():
         elif field == "certificate":
             print(f"\n证书: {value[:64]}...")
         elif field == "public_key" and value:
-            print(f"\n公钥: {value[:64]}...")
+            print(f"\n公钥: {value}")
         elif field == "user_data" and value:
             print(f"\n用户数据 (十六进制): {value}")
         elif field == "user_data_decoded" and value:
