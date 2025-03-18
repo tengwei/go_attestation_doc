@@ -77,7 +77,7 @@ func main() {
 		if err != nil {
 			log.Fatalf("读取公钥文件失败: %v", err)
 		}
-		
+
 		// 处理 PEM 格式的公钥
 		pemContent := string(pkData)
 		if strings.Contains(pemContent, "-----BEGIN PUBLIC KEY-----") {
@@ -86,11 +86,15 @@ func main() {
 			if pemBlock == nil {
 				log.Fatalf("解析 PEM 格式公钥失败")
 			}
-			
+
+			log.Printf("1pemBlock %v\n", pemBlock.Bytes)
+
 			// 重新编码为 Base64 以便传输
 			publicKeyContent = base64.StdEncoding.EncodeToString(pemBlock.Bytes)
 		} else {
 			// 如果不是 PEM 格式，假设是 DER 格式，直接进行 Base64 编码
+			log.Printf("pkData %v\n", pkData)
+
 			publicKeyContent = base64.StdEncoding.EncodeToString(pkData)
 		}
 	}
