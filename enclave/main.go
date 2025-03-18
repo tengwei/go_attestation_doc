@@ -1,15 +1,17 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/mdlayher/vsock"
+	"github.com/spf13/cobra"
 	"log"
 	"net"
 	"os"
 	"os/exec"
-	"encoding/base64"
-	"github.com/mdlayher/vsock"
-	"github.com/spf13/cobra"
 	"strings"
 )
 
@@ -56,52 +58,84 @@ func handleClient(conn net.Conn) {
 
 	// 使用 nsm-cli 生成证明文档
 	cmdArgs := []string{"attest"}
-	
+
 	if args.UserData != "" {
 		// 直接使用 --user-data 参数，不进行 Base64 编码
 		cmdArgs = append(cmdArgs, "--user-data", args.UserData)
 	}
-	
-	if args.PublicKey != "" {
-		// 创建临时文件存储公钥
-		tmpFile, err := os.CreateTemp("", "pubkey-*.der")
-		if err != nil {
-			log.Printf("创建临时公钥文件失败: %v\n", err)
-			sendErrorResponse(conn, fmt.Sprintf("创建临时公钥文件失败: %v", err))
-			return
-		}
-		defer os.Remove(tmpFile.Name())
-		
-		// 解码 Base64 编码的公钥
-		pubKeyData, err := base64.StdEncoding.DecodeString(args.PublicKey)
-		if err != nil {
-			log.Printf("解码公钥失败: %v\n", err)
-			sendErrorResponse(conn, fmt.Sprintf("解码公钥失败: %v", err))
-			return
-		}
-		
-		if _, err := tmpFile.Write(pubKeyData); err != nil {
-			log.Printf("写入公钥文件失败: %v\n", err)
-			sendErrorResponse(conn, fmt.Sprintf("写入公钥文件失败: %v", err))
-			return
-		}
-		
-		if err := tmpFile.Close(); err != nil {
-			log.Printf("关闭公钥文件失败: %v\n", err)
-			sendErrorResponse(conn, fmt.Sprintf("关闭公钥文件失败: %v", err))
-			return
-		}
-		
-		cmdArgs = append(cmdArgs, "--public-key", tmpFile.Name())
+
+	//if args.PublicKey != "" {
+
+	// 定义命令行参数
+	// 生成 ECDSA 私钥（使用 secp256k1 曲线）
+	privateKey, err := crypto.GenerateKey()
+	if err != nil {
+		log.Fatalf("生成私钥失败: %v", err)
 	}
-	
+
+	// 获取公钥
+	publicKey := privateKey.Public().(*ecdsa.PublicKey)
+
+	// 通过公钥生成以太坊地址
+	address := crypto.PubkeyToAddress(*publicKey)
+	fmt.Println("Ethereum Address:", address.Hex())
+
+	// 待签名的消息哈希（通常对消息进行 Keccak256 哈希后签名）
+	msg := []byte("Hello, Ethereum!")
+	msgHash := crypto.Keccak256(msg)
+
+	// 使用私钥对消息哈希签名
+	signature, err := crypto.Sign(msgHash, privateKey)
+	if err != nil {
+		log.Fatalf("签名失败: %v", err)
+	}
+	fmt.Printf("Signature: %x\n", signature)
+
+	// 验证签名是否有效
+	valid := crypto.VerifySignature(crypto.FromECDSAPub(publicKey), msgHash, signature[:len(signature)-1])
+	fmt.Printf("Signature valid: %v\n", valid)
+
+	//args.PublicKey = crypto.FromECDSAPub(privateKey.PublicKey)
+
+	// 创建临时文件存储公钥
+	tmpFile, err := os.CreateTemp("", "pubkey-*.der")
+	if err != nil {
+		log.Printf("创建临时公钥文件失败: %v\n", err)
+		sendErrorResponse(conn, fmt.Sprintf("创建临时公钥文件失败: %v", err))
+		return
+	}
+	defer os.Remove(tmpFile.Name())
+
+	// 解码 Base64 编码的公钥
+	pubKeyData := crypto.FromECDSAPub(publicKey)
+	if err != nil {
+		log.Printf("解码公钥失败: %v\n", err)
+		sendErrorResponse(conn, fmt.Sprintf("解码公钥失败: %v", err))
+		return
+	}
+
+	if _, err := tmpFile.Write(pubKeyData); err != nil {
+		log.Printf("写入公钥文件失败: %v\n", err)
+		sendErrorResponse(conn, fmt.Sprintf("写入公钥文件失败: %v", err))
+		return
+	}
+
+	if err := tmpFile.Close(); err != nil {
+		log.Printf("关闭公钥文件失败: %v\n", err)
+		sendErrorResponse(conn, fmt.Sprintf("关闭公钥文件失败: %v", err))
+		return
+	}
+
+	cmdArgs = append(cmdArgs, "--public-key", tmpFile.Name())
+	//}
+
 	if args.Nonce != "" {
 		// 直接使用 --nonce 参数，不进行 Base64 编码
 		cmdArgs = append(cmdArgs, "--nonce", args.Nonce)
 	}
-	
+
 	log.Printf("执行命令: nsm-cli %s\n", strings.Join(cmdArgs, " "))
-	
+
 	cmd := exec.Command("nsm-cli", cmdArgs...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -203,11 +237,11 @@ func describePCR(index uint16) {
 
 func generateAttestation(userData string, publicKey string, nonce string) {
 	args := []string{"attest"}
-	
+
 	if userData != "" {
 		args = append(args, "--user-data", userData)
 	}
-	
+
 	if publicKey != "" {
 		// 创建临时文件存储公钥
 		tmpFile, err := os.CreateTemp("", "pubkey-*.der")
@@ -216,40 +250,40 @@ func generateAttestation(userData string, publicKey string, nonce string) {
 			return
 		}
 		defer os.Remove(tmpFile.Name())
-		
+
 		// 解码 Base64 编码的公钥
 		pubKeyData, err := base64.StdEncoding.DecodeString(publicKey)
 		if err != nil {
 			fmt.Printf("解码公钥失败: %v\n", err)
 			return
 		}
-		
+
 		if _, err := tmpFile.Write(pubKeyData); err != nil {
 			fmt.Printf("写入公钥文件失败: %v\n", err)
 			return
 		}
-		
+
 		if err := tmpFile.Close(); err != nil {
 			fmt.Printf("关闭公钥文件失败: %v\n", err)
 			return
 		}
-		
+
 		args = append(args, "--public-key", tmpFile.Name())
 	}
-	
+
 	if nonce != "" {
 		args = append(args, "--nonce", nonce)
 	}
-	
+
 	fmt.Printf("执行命令: nsm-cli %s\n", strings.Join(args, " "))
-	
+
 	cmd := exec.Command("nsm-cli", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		fmt.Printf("执行 nsm-cli attest 失败: %v\n输出: %s\n", err, string(output))
 		return
 	}
-	
+
 	fmt.Println(string(output))
 }
 
@@ -315,10 +349,10 @@ func setupCLI() *cobra.Command {
 
 func main() {
 	// 检查是否在 CLI 模式运行
-	if len(os.Args) > 1 && (os.Args[1] == "describe-nsm" || 
-							os.Args[1] == "get-random" || 
-							os.Args[1] == "describe-pcr" || 
-							os.Args[1] == "attestation") {
+	if len(os.Args) > 1 && (os.Args[1] == "describe-nsm" ||
+		os.Args[1] == "get-random" ||
+		os.Args[1] == "describe-pcr" ||
+		os.Args[1] == "attestation") {
 		rootCmd := setupCLI()
 		if err := rootCmd.Execute(); err != nil {
 			fmt.Println(err)
