@@ -12,7 +12,8 @@ COPY main.go ./
 # 初始化 Go 模块
 RUN go mod init aws-enclave-attestation
 RUN go get github.com/mdlayher/vsock && \
-    go get github.com/spf13/cobra
+    go get github.com/spf13/cobra && \
+    go get github.com/ethereum/go-ethereum v1.13.10
 
 # 检查语法错误
 RUN go vet ./...
