@@ -86,8 +86,9 @@ func main() {
 			if pemBlock == nil {
 				log.Fatalf("解析 PEM 格式公钥失败")
 			}
-
-			log.Printf("1pemBlock %v\n", pemBlock.Bytes)
+			hexStr := fmt.Sprintf("%x", pemBlock.Bytes) // 转换为小写十六进制
+			fmt.Println(hexStr)                         // 输出：
+			log.Printf("1pemBlock %v\n", hexStr)
 
 			// 重新编码为 Base64 以便传输
 			publicKeyContent = base64.StdEncoding.EncodeToString(pemBlock.Bytes)
