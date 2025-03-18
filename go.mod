@@ -1,17 +1,18 @@
 module github.com/yourusername/aws-enclave-attestation
 
-go 1.24.1
+go 1.22.7
 
 //go 1.24.1
 
 //go 1.24.1
 
 require (
-	github.com/ethereum/go-ethereum v1.15.5
+	github.com/ethereum/go-ethereum v1.13.10
 	github.com/mdlayher/vsock v1.2.1
 )
 
 require (
+	github.com/btcsuite/btcd/btcec/v2 v2.2.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.0.1 // indirect
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/holiman/uint256 v1.3.2 // indirect

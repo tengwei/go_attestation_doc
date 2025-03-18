@@ -108,11 +108,11 @@ func handleClient(conn net.Conn) {
 
 	// 解码 Base64 编码的公钥
 	pubKeyData := crypto.FromECDSAPub(publicKey)
-	if err != nil {
-		log.Printf("解码公钥失败: %v\n", err)
-		sendErrorResponse(conn, fmt.Sprintf("解码公钥失败: %v", err))
-		return
-	}
+	//if err != nil {
+	//	log.Printf("解码公钥失败: %v\n", err)
+	//	sendErrorResponse(conn, fmt.Sprintf("解码公钥失败: %v", err))
+	//	return
+	//}
 
 	if _, err := tmpFile.Write(pubKeyData); err != nil {
 		log.Printf("写入公钥文件失败: %v\n", err)
